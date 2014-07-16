@@ -16,6 +16,11 @@ class BoyomiClient
     byte[] readbuf;
     bool _isSpeaching;
 
+    bool isConnected
+    {
+        get { return this.tcpClient != null && tcpClient.Connected; }
+    }
+
     /// <summary>
     /// 発声中であるか
     /// </summary>
@@ -32,27 +37,28 @@ class BoyomiClient
     /// </summary>
     /// <param name="hostIp">ホストIP</param>
     /// <param name="hostPort">ホストポート</param>
-    public BoyomiClient(string hostIp,int hostPort)
+    public BoyomiClient(string hostIp, int hostPort)
     {
         this.hostIp = hostIp;
         this.hostPort = hostPort;
-        readbuf = new byte[1024];
+        readbuf = new byte[8];
     }
 
     /// <summary>
     /// 棒読みちゃんに接続を試みる
     /// </summary>
-    public void Connect()
+    public bool Connect()
     {
         try
         {
             tcpClient = new TcpClient(hostIp, hostPort);
             //コールバック指定
             tcpClient.GetStream().BeginRead(readbuf, 0, readbuf.Length, CallBackBeginReceive, null);
+            return true;
         }
         catch (Exception e)
         {
-            //nice catch!
+            return false;
         }
     }
 
@@ -63,9 +69,20 @@ class BoyomiClient
     /// <param name="ar">IAsyncResult</param>
     private void CallBackBeginReceive(IAsyncResult ar)
     {
-        var bytes = tcpClient.GetStream().EndRead(ar);
-        //結果が0でないなら発声中
-        _isSpeaching = readbuf[0] > 0;
+        try
+        {
+            var bytes = this.tcpClient.GetStream().EndRead(ar);
+            //結果が0でないなら発声中
+            _isSpeaching = readbuf[0] > 0;
+        }
+        catch (Exception e)
+        {
+
+        }
+        finally
+        {
+            tcpClient.Close();
+        }
     }
 
     /// <summary>
@@ -74,23 +91,20 @@ class BoyomiClient
     /// </summary>
     public void CheckSpeaking()
     {
-        //一回のRequestごとに接続が切れるので毎回つなぐ
-        Connect();
+        if (!isConnected) { Connect(); }
         try
         {
-            using (NetworkStream ns = tcpClient.GetStream())
-            {
-                using (BinaryWriter bw = new BinaryWriter(ns))
-                {
-                    //0x0120はGetNowPlaying（音声再生状態の取得）
-                    Int16 iCommand = 0x0120;
-                    bw.Write(iCommand);
-                }
-            }
+            NetworkStream ns = tcpClient.GetStream();
+            BinaryWriter bw = new BinaryWriter(ns);
+
+            //0x0120はGetNowPlaying（音声再生状態の取得）
+            Int16 iCommand = 0x0120;
+            bw.Write(iCommand);
+            bw.Flush();
         }
         catch (Exception e)
         {
-            //nice catch!
+
         }
     }
 }
