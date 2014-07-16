@@ -10,8 +10,10 @@ public class BoyomiComponent : MonoBehaviour
     public string hostIp = "127.0.0.1";
     public int hostPort = 50001;
 
+    private bool _isSpeaching = false;
+
     //何秒おきに棒読みちゃん問い合わせるか
-    public float checkSecond = 0.2f;
+    public float checkSecond = 1.0f;
 
     /// <summary>
     /// 発声状態
@@ -20,19 +22,19 @@ public class BoyomiComponent : MonoBehaviour
     {
         get
         {
-            if (boyomi == null) { return false; }
-            return boyomi.isSpeaching;
+            return this.boyomi.isSpeaching;
         }
     }
 
-	// Use this for initialization
-	void Start () {
-        this.boyomi = new BoyomiClient(hostIp, hostPort);
-        InvokeRepeating("checkSpeacking", checkSecond, checkSecond);
-	}
-
-    void checkSpeacking()
+    // Use this for initialization
+    void Start()
     {
-        this.boyomi.CheckSpeaking();
+        this.boyomi = new BoyomiClient(hostIp, hostPort);
+        InvokeRepeating("checkSpeaching", checkSecond, checkSecond);
+    }
+
+    void checkSpeaching()
+    {
+        this.boyomi.checkSpeaching();
     }
 }

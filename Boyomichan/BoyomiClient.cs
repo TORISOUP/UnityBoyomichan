@@ -13,23 +13,15 @@ class BoyomiClient
     private TcpClient tcpClient;
     private String hostIp;
     private int hostPort;
-    byte[] readbuf;
-    bool _isSpeaching;
+    private bool _isSpeaching;
+    public bool isSpeaching
+    {
+        get { return this._isSpeaching; }
+    }
 
     bool isConnected
     {
         get { return this.tcpClient != null && tcpClient.Connected; }
-    }
-
-    /// <summary>
-    /// 発声中であるか
-    /// </summary>
-    public bool isSpeaching
-    {
-        get
-        {
-            return this._isSpeaching;
-        }
     }
 
     /// <summary>
@@ -41,7 +33,6 @@ class BoyomiClient
     {
         this.hostIp = hostIp;
         this.hostPort = hostPort;
-        readbuf = new byte[8];
     }
 
     /// <summary>
@@ -52,44 +43,21 @@ class BoyomiClient
         try
         {
             tcpClient = new TcpClient(hostIp, hostPort);
-            //コールバック指定
-            tcpClient.GetStream().BeginRead(readbuf, 0, readbuf.Length, CallBackBeginReceive, null);
-            return true;
+            return tcpClient.Connected;
         }
-        catch (Exception e)
+        catch
         {
+            //nice catch
             return false;
         }
     }
 
-    /// <summary>
-    /// 受信CallBack
-    /// 発声中であるかどうかしか確認しない
-    /// </summary>
-    /// <param name="ar">IAsyncResult</param>
-    private void CallBackBeginReceive(IAsyncResult ar)
-    {
-        try
-        {
-            var bytes = this.tcpClient.GetStream().EndRead(ar);
-            //結果が0でないなら発声中
-            _isSpeaching = readbuf[0] > 0;
-        }
-        catch (Exception e)
-        {
-
-        }
-        finally
-        {
-            tcpClient.Close();
-        }
-    }
 
     /// <summary>
-    /// 棒読みちゃん発声状態を問い合わせる
-    /// 結果は最終的に_isSpeachingに入る
+    ///  棒読みちゃん発声状態を問い合わせる(同期処理）
     /// </summary>
-    public void CheckSpeaking()
+    /// <returns>発声中かどうか</returns>
+    public void checkSpeaching()
     {
         if (!isConnected) { Connect(); }
         try
@@ -101,10 +69,12 @@ class BoyomiClient
             Int16 iCommand = 0x0120;
             bw.Write(iCommand);
             bw.Flush();
+            BinaryReader br = new BinaryReader(ns);
+            _isSpeaching = br.ReadByte() > 0;
         }
-        catch (Exception e)
+        catch
         {
-
+            return;
         }
     }
 }
